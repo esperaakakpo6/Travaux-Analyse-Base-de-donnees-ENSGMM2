@@ -1,0 +1,920 @@
+---
+title: ""
+format:
+  pdf:
+    number-sections: true
+code-line-numbers: true
+include-in-header:
+  text: |
+    \usepackage{fancyhdr}
+    \pagestyle{fancy}
+    \fancyhf{}
+    \fancyfoot[L]{\thepage}  % Numéro de page à gauche
+    \fancyfoot[R]{Travaux de maison Analyse et Base de données} % Texte centré
+    \renewcommand{\footrulewidth}{0.2pt} % Ligne au-dessus du pied de page
+---
+
+\tableofcontents
+\newpage
+
+### [Exercice 1:]{.underline} *Base Wine*
+
+La base **Wine** provient d’une étude sur des vins issus de trois cépages différents cultivés dans une même région. Chaque vin est décrit par 13 variables quantitatives représentant ses caractéristiques physico-chimiques (teneur en alcool, acidité, magnésium, phénols, intensité de couleur, etc.).
+
+1.  Choix de méthode multivariée approprié et justification.
+
+    La base Wine étant composée exclusivement de variables quantitatives décrivant des caractéristiques physico-chimiques potentiellement corrélées, l’Analyse en Composantes Principales (ACP) constitue donc la méthode multivariée la plus appropriée.
+
+2.  
+
+    ```{r}
+    # Importation de la base Wine
+    library(readxl)
+    wine <- read_excel("wine.xlsx")
+    View(wine)
+
+    # Affichage du nombre d'observations et de variables
+    nb_observations <- nrow(wine)
+    nb_variables <- ncol(wine)
+
+    cat("Nombre d'observations :", nb_observations, "\n")
+    cat("Nombre de variables :", nb_variables, "\n")
+
+    ```
+
+#### Présentation de la base
+
+La base **Wine** provient d’une étude portant sur des vins issus de **trois cépages différents**, cultivés dans une même région. Chaque observation correspond à un vin, décrit à l’aide de **caractéristiques physico-chimiques**. L’objectif est d’analyser la structure des vins et de comparer les cépages à partir de ces variables quantitatives.
+
+-   **Nombre d’observations** : 178 vins
+
+-   **Nombre de variables** : 14
+
+**13 variables quantitatives** (caractéristiques physico-chimiques)
+
+**1 variable qualitative** (`target`) indiquant le cépage
+
+#### Description des variables
+
+**Variable qualitative**
+
+`target` = Cépage du vin (3 modalités : 0, 1, 2)
+
+**Variables quantitatives**
+
+`alcohol` = Teneur en alcool
+
+`malic_acid` = Acidité malique
+
+`ash` = Teneur en cendres
+
+`alcalinity_of_ash` = Alcalinité des cendres
+
+`magnesium` = Teneur en magnésium
+
+`total_phenols` = Phénols totaux
+
+`flavanoids` = Flavonoïdes
+
+`nonflavanoid_phenols` = Phénols non flavonoïdes
+
+`proanthocyanins` = Proanthocyanines
+
+`color_intensity` = Intensité de la couleur
+
+`hue` = Teinte du vin
+
+`od280/od315_of_diluted_wines` = Rapport d’absorbance OD280 / OD315
+
+`proline` = Teneur en proline
+
+#### ACP sous R
+
+```{r}
+# Exclure la dernière colonne qui contient categories de cépage
+wine_ <-  as.data.frame(wine[, -ncol(wine)])
+#head(wine_, 5)
+# convertir les categories de cepage en facteur
+etiquettes <- as.factor(wine[[ncol(wine)]]) 
+
+# Examiner la matrice de diagramme de dispersion
+library(GGally)
+ggpairs(wine_)
+
+# Réaliser l'ACP
+library(FactoMineR)
+ResACP <- PCA(wine_, graph = FALSE)
+ResACP
+
+# Extraire les Valeurs propres de l'ACP
+print("\n Valeur propre de l'ACP")
+head(ResACP$eig, 5)
+
+# Extraire le tableau des corrélations des variables avec les 
+#Composantes Principales
+print("\n Correlation des variables avec les composantes")
+head(ResACP$var$cor, 5)
+
+#Extraire le tableau des coordonnee pour les catégories de cépages
+print("\n Coordonnées des cépages")
+head(ResACP$ind$coord, 5)
+
+#Extraire le tableau des qualités pour les catégories de cépages
+print("\n Qualité")
+head(ResACP$ind$cos2, 5)
+
+#Extraire le tableau des contributions pour les catégories de cépages
+print("\n Contribution")
+head(ResACP$ind$contrib, 5)
+```
+
+Les deux premiers axes expliquent **55,4 % de la variance totale**, dont **36,2 % pour l’axe 1** et **19,2 % pour l’axe 2**.
+
+L’axe 1 oppose :
+
+-   des vins **riches en flavanoids, total_phenols, proline, hue et alcohol** (coordonnées positives),
+
+-   à des vins caractérisés par une **forte acidité malique (malic_acid)** et une **alcalinité élevée des cendres (alcalinity_of_ash)** (coordonnées négatives).
+
+    Cet axe traduit **la richesse phénolique et la maturité du vin**
+
+L’axe 2 est principalement associé à :
+
+-   des valeurs élevées de **alcohol, color_intensity, magnesium et ash** (coordonnées positives),
+
+-   opposées à des vins ayant des valeurs plus faibles de **hue** et du rapport **od280/od315_of_diluted_wines** (coordonnées négatives).
+
+    Cet axe reflète un **contraste entre intensité colorante et structure minérale du vin**.
+
+```{r}
+# Afficher le graphe de corrélation des variables avec les Composante Principales 1 & 2
+# Encore appellée Cercle de corrélations
+plot(ResACP, choix = "var", axes = c(1, 2))
+```
+
+### Relations entre les caractéristiques physico-chimique:
+
+-   Les variables **flavanoids**, **total_phenols** et **proline** sont fortement et positivement corrélées entre elles.
+
+-   **malic_acid** et **alcalinity_of_ash** sont corrélées entre elles et opposées aux variables phénoliques.
+
+-   Les variables **alcohol** et **color_intensity** contribuent fortement à la structuration du plan factoriel.
+
+-   Les variables proches du centre du cercle contribuent faiblement aux deux axes.
+
+```{r}
+# Afficher le graphe de projection des categorie de cepage dans le système d'axes formé par les Composante Principales 1 & 2
+library(factoextra)
+fviz_pca_ind(ResACP,
+             habillage = etiquettes,     # ← colorie par groupe (0,1,2)
+             axes = c(1, 2),
+             addEllipses = TRUE,     # ellipse de confiance autour de chaque groupe
+             palette = "jco",        # jolie palette
+             repel = FALSE,          # inutile ici (on n'affiche pas les noms)
+             geom = "point") 
+```
+
+-   Les vins du **cépage 0** sont principalement situés du côté positif de l’axe 1, indiquant des vins riches en composés phénoliques et en alcool.
+
+-   Les vins du **cépage 1** sont plutôt positionnés vers les valeurs négatives de l’axe 2, traduisant des caractéristiques différentes en termes de couleur et de teinte.
+
+-   Les vins du **cépage 2** se situent majoritairement du côté négatif de l’axe 1, associés à une acidité plus marquée.
+
+#### ACP sous Python
+
+```{python}
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+```
+
+```{python}
+
+# Charger la base wine dans un DataFrame
+wine = pd.read_excel("wine.xlsx")
+
+#Séparation des variables quantitatives et du cépage
+# La dernière colonne correspond au cépage (target)
+wine_ = wine.iloc[:, :-1]      # variables quantitatives
+etiquettes = wine.iloc[:, -1] # cépages (0, 1, 2)
+
+# Matrice de diagrammes de dispersion
+sns.pairplot(wine_, corner=True)
+plt.show()
+
+#Standardisation des données
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(wine_)
+
+```
+
+```{python}
+
+#Réalisation de l’ACP
+pca = PCA()
+X_pca = pca.fit_transform(X_scaled)
+
+# Valeurs propres et pourcentages d’inertie
+eig_values = pca.explained_variance_
+explained_var = pca.explained_variance_ratio_ * 100
+cumulative_var = np.cumsum(explained_var)
+
+eig_df = pd.DataFrame({
+    "eigenvalue": eig_values,
+    "percentage of variance": explained_var,
+    "cumulative percentage of variance": cumulative_var
+})
+
+print("\nValeurs propres de l'ACP")
+print(eig_df.head())
+
+# Corrélations des variables avec les composantes principales
+# Corrélations = loadings
+loadings = pca.components_.T * np.sqrt(eig_values)
+
+corr_df = pd.DataFrame(
+    loadings,
+    index=wine_.columns,
+    columns=[f"Dim.{i+1}" for i in range(loadings.shape[1])]
+)
+
+print("\nCorrélation des variables avec les composantes")
+print(corr_df.iloc[:, :5].head())
+
+# Coordonnées des individus
+coord_df = pd.DataFrame(
+    X_pca,
+    columns=[f"Dim.{i+1}" for i in range(X_pca.shape[1])]
+)
+
+print("\nCoordonnées des individus")
+print(coord_df.head())
+
+#Qualité de représentation (cos²)
+cos2 = (coord_df ** 2).div((coord_df ** 2).sum(axis=1), axis=0)
+
+print("\nQualité de représentation (cos²)")
+print(cos2.iloc[:, :5].head())
+
+#Contribution des individus
+contrib = (coord_df ** 2) / coord_df.shape[0]
+
+print("\nContribution des individus")
+print(contrib.iloc[:, :5].head())
+```
+
+```{python}
+
+#Cercle des corrélations (axes 1 et 2)
+plt.figure(figsize=(7, 7))
+
+for i, var in enumerate(wine_.columns):
+    plt.arrow(0, 0,
+              corr_df.iloc[i, 0],
+              corr_df.iloc[i, 1],
+              color='blue', alpha=0.7)
+    plt.text(corr_df.iloc[i, 0]*1.1,
+             corr_df.iloc[i, 1]*1.1,
+             var, fontsize=9)
+
+circle = plt.Circle((0, 0), 1, color='black', fill=False)
+plt.gca().add_artist(circle)
+
+plt.axhline(0, color='grey', lw=1)
+plt.axvline(0, color='grey', lw=1)
+
+plt.xlabel("Dim 1")
+plt.ylabel("Dim 2")
+plt.title("Cercle des corrélations (ACP)")
+plt.axis("equal")
+plt.show()
+
+```
+
+```{python}
+
+# Projection des individus colorés par cépage (axes 1 et 2)
+plt.figure(figsize=(8, 6))
+sns.scatterplot(
+    x=coord_df["Dim.1"],
+    y=coord_df["Dim.2"],
+    hue=etiquettes,
+    palette="Set1"
+)
+
+plt.axhline(0, color='grey', lw=1)
+plt.axvline(0, color='grey', lw=1)
+
+plt.xlabel("Dim 1")
+plt.ylabel("Dim 2")
+plt.title("Projection des individus – ACP")
+plt.legend(title="Cépage")
+plt.show()
+
+```
+
+En conclusion, Les vins du **cépage 0** se distinguent par des **teneurs élevées en flavanoids, phénols totaux, proline et alcool**, traduisant des vins plus riches et plus structurés. Les vins du **cépage 1** sont caractérisés par une **intensité de couleur plus faible**, une **teinte différente** et des valeurs intermédiaires pour les composés phénoliques. Les vins du **cépage 2** présentent principalement une **acidité malique plus élevée** et une **alcalinité des cendres importante**, indiquant des profils plus acides et moins riches en composés phénoliques.
+
+Ainsi, l’ACP montre que les **composés phénoliques, la teneur en alcool, l’intensité colorante et l’acidité** sont les variables dominantes dans la discrimination des cépages.
+
+### [Exercice 2 :]{.underline} *Base HouseTasks*
+
+La base **HouseTasks** est issue d’une enquête portant sur la répartition des tâches ménagères au sein des couples.
+
+3.  Choix de méthode multivarier et justification
+
+    La méthode multivariée la plus adaptée pour analyser cette base est **l’Analyse Factorielle des Correspondances (AFC)**.
+
+    L’Analyse Factorielle des Correspondances (AFC) est la méthode multivariée appropriée car les données forment un **tableau de contingence** croisant deux variables qualitatives : les tâches ménagères et les modes de répartition.
+
+4.  
+
+```{r}
+# Importation de la base
+library(readxl)
+housetasks <- read_excel("housetasks.xlsx")
+View(housetasks)
+
+# Affichage du nombre d'observations et de variables
+nb_observations <- nrow(housetasks)
+nb_variables <- ncol(housetasks)
+
+cat("Nombre d'observations :", nb_observations, "\n")
+cat("Nombre de variables :", nb_variables, "\n")
+
+```
+
+#### Présentation et description de la base **HouseTasks**
+
+La base **HouseTasks** provient d’une enquête sur la répartition des tâches ménagères au sein des couples. Elle décrit la fréquence (ou le nombre de répondants) associée à chaque mode de répartition pour différentes tâches domestiques. Les modalités de répartition sont les suivantes :
+
+-   **Wife** : la tâche est principalement effectuée par la femme.
+-   **Alternating** : la tâche est alternée entre les deux partenaires.
+-   **Husband** : la tâche est principalement effectuée par l’homme.
+-   **Jointly** : la tâche est effectuée conjointement par les deux partenaires.
+
+Les tâches considérées sont :
+
+\- Cuisine (Cooking)\
+- Lessive (Laundry)\
+- Ménage (Cleaning)\
+- Courses (Shopping)\
+- Repassage (Ironing)\
+- Gestion des finances (Finances)\
+- Réparations (Repairs)\
+- Conduite (Driving)\
+- Jardinage (Gardening)\
+- Aide aux devoirs (Homework)\
+- Vaisselle (Dishes)
+
+Chaque cellule du tableau indique le **nombre de ménages** correspondant à une combinaison tâche / mode de répartition. Il s’agit donc d’un **tableau de contingence**.
+
+#### AFC sous R
+
+```{r}
+
+# Charger le package requis
+library(FactoMineR)
+
+housetasks_tab <- housetasks[, -1]
+#  Exécuter l'analyse factorielle des correspondances 
+CAResults1 <- CA(housetasks_tab, graph = FALSE)
+#Afficher les résultats de l'analyse des correspondances.
+summary(CAResults1)
+```
+
+-   Les tâches avec un cos² (\>50%) sur l’axe 1 sont : cuisine, jardinage, devoirs, vaisselle.
+
+-   Sur l’axe 2 : courses, réparations, finances.
+
+-   Le test du khi-deux confirme une **forte dépendance** entre tâches et modes de répartition (p \< 0.001).
+
+```{r}
+
+# Modifier les noms des lignes
+rownames(CAResults1$row$coord) <- housetasks$...1
+
+# Visualiser le résultat sur une graphe avec les nouveaux noms
+plot.CA(CAResults1, axes = c(1, 2))
+```
+
+-   **Axe 1 (72.1%)** oppose les tâches faites par la **femme** (cuisine, lessive, repassage, menage) à celles faites par le **mari** (jardinage, aide aux devoirs, vaisselle).
+
+-   **Axe 2 (21.6%)** met en avant les tâches **faites conjointement** (shopping, réparations) ou **alternées** (réparations, finances, conduit), surtout en haut du plan.
+
+#### AFC sous Python
+
+```{python}
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import prince
+
+```
+
+```{python}
+
+# Charger la base wine dans un DataFrame
+housetasks = pd.read_excel("housetasks.xlsx",  index_col=0)
+
+# Effectuer l'Analyse des Correspondances
+ca = prince.CA(n_components=2)
+ca = ca.fit(housetasks)
+
+# Valeurs propres (inertie = valeurs propres)
+eigenvalues = ca.eigenvalues_
+explained_inertia = [ev / ca.total_inertia_ for ev in eigenvalues]
+
+print("Valeurs propres :", eigenvalues)
+print("Inertie expliquée (%) :", [f"{x:.1%}" for x in explained_inertia])
+
+# Coordonnées
+row_coords = ca.row_coordinates(housetasks)
+col_coords = ca.column_coordinates(housetasks)
+
+# Contributions (pas le cos² !)
+# Pour le cos², on utilise ca.row_cosine_similarities() et ca.column_cosine_similarities()
+row_cos2 = ca.row_cosine_similarities(housetasks)
+col_cos2 = ca.column_cosine_similarities(housetasks)
+
+print("\nCos² des lignes (qualité de représentation) :")
+print(row_cos2)
+print("\nCos² des colonnes :")
+print(col_cos2)
+
+
+```
+
+```{python}
+
+# Charger les données
+housetasks = pd.read_excel("housetasks.xlsx", index_col=0)
+
+# Visualisation manuelle (car plot_coordinates n’existe pas dans toutes les versions)
+plt.figure(figsize=(8, 6))
+
+# Points lignes (tâches)
+plt.scatter(row_coords[0], row_coords[1], color='red', label='Tâches')
+for i, txt in enumerate(row_coords.index):
+    plt.annotate(txt, (row_coords.iloc[i, 0], row_coords.iloc[i, 1]), color='red')
+
+# Points colonnes (modalités)
+plt.scatter(col_coords[0], col_coords[1], color='blue', label='Modalités')
+for i, txt in enumerate(col_coords.index):
+    plt.annotate(txt, (col_coords.iloc[i, 0], col_coords.iloc[i, 1]), color='blue')
+
+# Titres et axes
+plt.axhline(0, color='grey', linewidth=0.5)
+plt.axvline(0, color='grey', linewidth=0.5)
+plt.xlabel(f"Axe 1 ({explained_inertia[0]:.1%})")
+plt.ylabel(f"Axe 2 ({explained_inertia[1]:.1%})")
+plt.title("Analyse des Correspondances – HouseTasks")
+plt.legend()
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.tight_layout()
+plt.show()
+
+
+```
+
+En conclusion, les tâches telles que **la cuisine, la lessive, le repassage, et le menage** sont majoritairement associées au mode **Wife**. À l’inverse, les tâches comme **le jardinage, les aides aux devoirs, la vaisselle** sont principalement liées au mode **Husband**. Les tâches telles que **shopping, réparations** se rapprochent davantage du mode **Jointly**, montrant que la **coopération au sein du couple est dominante** pour ces activités. Et enfin le mode **Alternating** pour les tâches comme **les réparations, la gestion des finances, et les courses**.
+
+### [Exercice 3 :]{.underline} *Base Adult (Census Income)*
+
+La base Adult provient d’un recensement socio-économique et décrit des individus à l’aide de variables telles que : le sexe, le niveau d’éducation, la situation matrimoniale, la profession, le niveau de revenu. L’objectif est d’identifier des profils d’individus et d’analyser les relations entre les différentes modalités des variables.
+
+1.  Description des variables et leur nature.
+
+    Sexe : variable qualitative nominale (modalités : Male, Female).
+
+    Éducation : variable qualitative ordinale (modalités ordonnées par niveau : HS-grad \< Bachelors \< Masters \< PhD).
+
+    Situation matrimoniale : variable qualitative nominale (Married, Single, Divorced).
+
+    Profession : variable qualitative nominale (Tech, Service, Exec).
+
+    Revenu : variable qualitative binaire (\<=50K, \>50K), souvent traitée comme la variable cible.
+
+2.  Choix de méthode multivariée approprié et justification.
+
+    Une analyse des correspondances multiples (ACM) est adaptée, car toutes les variables sont qualitatives.
+
+3.  
+
+    ```{r}
+
+    # Importation de la base Wine
+    library(readxl)
+    adult_clean <- read_excel("adult_clean.xlsx")
+    View(adult_clean)
+
+    # Affichage du nombre d'observations et de variables
+    nb_observations <- nrow(adult_clean)
+    nb_variables <- ncol(adult_clean)
+
+    cat("Nombre d'observations :", nb_observations, "\n")
+    cat("Nombre de variables :", nb_variables, "\n")
+    ```
+
+    #### ACM sous R
+
+```{r}
+
+library(FactoMineR)
+library(factoextra)
+
+#the MCA is performed only on the active
+#'individuals/variables :
+res.mca <- MCA(adult_clean, graph = FALSE)
+print(res.mca)
+
+#'Eigenvalues / Variances
+#'The proportion of variances retained by the different dimensions (axes) 
+#'can be extracted using the function get_eigenvalue() [factoextra package] 
+#'as follow:
+eig.val <- get_eigenvalue(res.mca)
+head(eig.val)
+
+```
+
+```{r}
+
+#'To visualize the percentages of inertia explained by each
+#'MCA dimensions, use the function fviz_eig() or fviz_screeplot() 
+fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
+
+```
+
+```{r}
+
+#'Biplot
+#'The function fviz_mca_biplot() [factoextra package] is used to draw 
+#'the biplot of individuals and variable categories:
+fviz_mca_biplot(res.mca, 
+                repel = TRUE, # Avoid text overlapping (slow if many point)
+                ggtheme = theme_minimal())
+```
+
+```{r}
+
+#'Graph of variables
+#'Results: The function get_mca_var() [in factoextra] is used 
+#'to extract the results for variable categories. 
+#'This function returns a list containing the coordinates, 
+#'the cos2 and the contribution of variable categories:
+
+var <- get_mca_var(res.mca)
+var
+summary(res.mca)
+#'The different components can be accessed as follow:
+# Coordinates
+print('\ncoordonnées variable\n')
+var$coord
+# Cos2: quality on the factore map
+print("Qualité Variable\n")
+var$cos2
+# Contributions to the principal components
+print('Contribution variable\n')
+var$contrib
+```
+
+```{r}
+
+#'Correlation between variables and principal dimensions
+#'To visualize the correlation between variables 
+#'and MCA principal dimensions, type this:
+fviz_mca_var(res.mca, choice = "mca.cor", 
+             repel = TRUE, # Avoid text overlapping (slow)
+             ggtheme = theme_minimal())
+```
+
+```{r}
+
+#'Use the function fviz_mca_var() [in factoextra] 
+#'to visualize only variable categories:
+fviz_mca_var(res.mca, col.var="black",
+             repel = TRUE)
+
+```
+
+Axe 1
+
+-   Sens positif : Les catégories les plus proches sont \>50K, PhD, Masters, Exec, male et Married. Cela signifie que les personnes de sexe masculin avec un doctorat ou un master, dans des postes d'exécutif, mariées, ont tendance à avoir un revenu supérieur à 50K.
+
+-   Sens négatif : Les catégories clés sont \<=50K, divorced, female et Single. Cela signifie que les personnes de sexe féminin celibataires, divorcées , dans des métiers du service, on tendance à gagner moins de 50K.
+
+Axe 2
+
+-   Sens positif : On y trouve male, tech, divorced et bachelors. Cela suggère une association entre être un homme ayant divorcé, avoir un bachelor et travailler dans le secteur technique.
+
+-   Sens négatif : Les catégories female, service et hs-grad sont regroupées ici, indiquant une concentration de femmes avec un diplôme d'études secondaires dans les emplois de service.
+
+```{r}
+
+#'For instance, gradient.cols = c("white", "blue", "red") means that:
+#'variable categories with low cos2 values will be colored in “white”
+#'variable categories with mid cos2 values will be colored in “blue”
+#'variable categories with high cos2 values will be colored in “red”
+# Color by cos2 values: quality on the factor map
+fviz_mca_var(res.mca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, # Avoid text overlapping
+             ggtheme = theme_minimal())
+```
+
+-   Plusieurs catégories sont bien représentées sur les deux axes (cos2 \> 0.5), notamment PhD, Exec, HS-grad, Service, \>50K et \<=50K.
+
+-   D'autres, comme Divorced ou Single, ont un cos2 faible sur l'axe 1, ce qui signifie qu'elles sont mieux expliquées par les axes suivants.
+
+```{r}
+
+library("corrplot")
+corrplot(var$cos2, is.corr=FALSE)
+```
+
+```{r}
+
+# Cos2 of variable categories on Dim.1 and Dim.2
+fviz_cos2(res.mca, choice = "var", axes = 1:2)
+
+```
+
+En conclusion, le revenu est fortement associé au niveau d’éducation, à la profession aux sexe et à la situation matrimoniale : les individus de sexe masculin avec un diplôme élevé (Master, PhD), exerçant une profession de type exécutive (Exec) et mariés ont une forte probabilité de gagner plus de 50K. À l’inverse, ceux qui sont de sexe feminin avec un diplôme secondaire (HS-grad), travaillant dans le secteur du service (Service) et célibataires sont plus souvent dans la catégorie de revenu inférieur (≤50K). En outre, des différences de répartition selon le sexe apparaissent clairement : les hommes sont plus présents dans les métiers techniques (Tech) avec un niveau de Bachelor, tandis que les femmes sont plus concentrées dans les emplois de service, souvent avec un niveau d’éducation plus modeste.
+
+#### ACM sous Python
+
+```{python}
+
+import pandas as pd
+import prince
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+```
+
+```{python}
+
+# Chargement des données
+adult_clean = pd.read_excel("adult_clean.xlsx")
+
+# Vérifie que toutes les colonnes sont bien catégorielles
+adult_clean = adult_clean.astype('category')
+
+# Analyse des Correspondances Multiples (ACM / MCA)
+mca = prince.MCA(
+    n_components=6,          # nombre d'axes à calculer
+    random_state=42
+)
+
+# Ajustement de l'ACM
+mca = mca.fit(adult_clean)
+
+# ---- 1. Valeurs propres (inertie / variance) ----
+eig = pd.DataFrame({
+    'eigenvalue': mca.eigenvalues_,
+    'variance_percent': mca.eigenvalues_ / mca.eigenvalues_.sum() * 100,
+})
+eig['cumulative_variance_percent'] = eig['variance_percent'].cumsum()
+print("\nValeurs propres :")
+print(eig.round(3))
+
+
+```
+
+```{python}
+
+# Scree plot (inertie par axe)
+plt.figure(figsize=(8, 5))
+sns.lineplot(x=range(1, len(eig)+1), y=eig['variance_percent'], marker='o')
+plt.title("Pourcentage d'inertie par axe (Scree Plot)")
+plt.xlabel("Axe")
+plt.ylabel("Pourcentage d'inertie (%)")
+plt.ylim(0, 45)
+plt.xticks(range(1, len(eig)+1))
+for i, txt in enumerate(eig['variance_percent']):
+    plt.text(i+1, txt + 0.5, f"{txt:.1f}", ha='center')
+plt.show()
+
+
+```
+
+```{python}
+
+# ---- 2. Coordonnées des catégories ----
+coords = mca.column_coordinates(adult_clean)
+print("\nCoordonnées des catégories (10 premières) :")
+print(coords.head(10).round(3))
+
+# Cos2 (qualité de représentation)
+cos2 = mca.column_cosine_similarities(adult_clean)
+print("\nCos2 des catégories (10 premières) :")
+print(cos2.head(10).round(3))
+
+# Contributions
+contrib = mca.column_contributions_ * 100  # en %
+print("\nContributions des catégories (en %) :")
+print(contrib.head(10).round(3))
+
+
+```
+
+```{python}
+
+# ---- 3. Visualisations ----
+
+# a) Cercle des catégories (axes 1 et 2)
+coords_cat = mca.column_coordinates(adult_clean)
+
+plt.figure(figsize=(10, 8))
+ax = plt.gca()
+
+# Tracer les points des catégories
+for i, (cat, row) in enumerate(coords_cat.iterrows()):
+    x, y = row[0], row[1]
+    ax.scatter(x, y, color='black', s=50)
+    ax.text(x, y, cat, fontsize=9, ha='center', va='center')
+
+# Ajouter les axes et la grille
+ax.axhline(0, color='grey', linewidth=0.5)
+ax.axvline(0, color='grey', linewidth=0.5)
+ax.grid(True, linestyle='--', alpha=0.5)
+
+# Titre et labels
+ax.set_xlabel(f"Dim 1 ({eig.loc[0, 'variance_percent']:.1f}%)")
+ax.set_ylabel(f"Dim 2 ({eig.loc[1, 'variance_percent']:.1f}%)")
+ax.set_title("ACM – Cercle des catégories (axes 1 & 2)")
+plt.tight_layout()
+plt.show()
+
+```
+
+```{python}
+
+# b) Qualité de représentation (cos2) sur les deux premiers axes
+plt.figure(figsize=(10, 6))
+cos2_toplot = cos2[[0, 1]].copy()
+cos2_toplot.columns = ['Dim 1', 'Dim 2']
+cos2_toplot.plot(kind='bar', stacked=False, color=['#00AFBB', '#FC4E07'])
+plt.title("Cos² des catégories sur les axes 1 et 2")
+plt.ylabel("Cos²")
+plt.axhline(0.5, color='red', linestyle='--', linewidth=1, label='Seuil 0.5')
+plt.legend()
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+```
+
+```{python}
+
+# c) Contributions des catégories aux axes 1 et 2
+plt.figure(figsize=(10, 6))
+contrib_toplot = contrib[[0, 1]].copy()
+contrib_toplot.columns = ['Dim 1', 'Dim 2']
+contrib_toplot.plot(kind='bar', stacked=False, color=['#E7B800', '#00AFBB'])
+plt.title("Contributions (%) des catégories aux axes 1 et 2")
+plt.ylabel("Contribution (%)")
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+```
+
+### [Exercice 4 :]{.underline} *Base Bank Marketing*
+
+La base Bank Marketing provient d’une campagne marketing menée par une banque. Elle décrit des clients à l’aide des variables présentes dans la base. L’objectif est de comprendre la structure globale de la clientèle.
+
+1.  Choix de méthode multivarié et justification.
+
+    La méthode multivariée la plus appropriée pour analyser cette base est l’analyse factorielle des données mixtes (AFDM),
+
+    La base contient à la fois des variables quantitatives (comme *age* et *balance*) et des variables qualitatives (comme *job*, *marital*, *education*, *housing*, *loan*). L’ACP classique ne convient qu’aux variables quantitatives, tandis que l’analyse des correspondances multiples (ACM) s’applique uniquement aux qualitatives. La AFMD permet de traiter simultanément les deux types de variables.
+
+2.  
+
+```{r}
+
+rm(list=ls(all=TRUE))
+
+#' Packages
+library(PCAmixdata)
+library(ggplot2)
+library(factoextra)
+# Importation de la base bank
+library(readxl)
+bank <- read_excel("bank.xlsx")
+View(bank)
+
+# Affichage du nombre d'observations et de variables
+nb_observations <- nrow(bank)
+nb_variables <- ncol(bank)
+
+cat("Nombre d'observations :", nb_observations, "\n")
+cat("Nombre de variables :", nb_variables, "\n")
+```
+
+#### Présentation et description de la base bank
+
+La base **Bank Marketing** décrit un échantillon de clients à l’aide de **7 variables** :
+
+-   **2 variables quantitatives** : *age* (âge en années) et *balance* (solde bancaire).
+
+-   **5 variables qualitatives** : *job* (catégorie professionnelle), *marital* (état civil), *education* (niveau d’études), *housing* (possède un prêt immobilier : oui/non), *loan* (possède un prêt personnel : oui/non).
+
+#### AFMD sous R
+
+```{r}
+
+# Convertir en data.frame standard
+bank_df <- as.data.frame(bank)
+
+#Ajout d'une colonne label client
+bank_df$Label <- paste0("client_", 1:nrow(bank_df))
+
+# Labels pour les individus (à utiliser dans les graphiques)
+ind_labels <- bank_df$Label
+
+
+#  the number quantitatives variables and the number of qualitatives 
+X.quanti <- bank_df[,c(1, 5)] 
+X.quali <- bank_df[,c(2, 3, 4, 6, 7)]
+# Convertir les variables qualitatives en facteurs si besoin
+X.quali <- as.data.frame(lapply(X.quali, as.factor))
+
+#'Perform the analyses  
+m1 <- PCAmix(X.quanti,X.quali, graph=FALSE, rename.level = TRUE)
+summary(m1)
+
+```
+
+```{r}
+
+#'Answers for The Eigenvalue. This answer allows to identify the Principal 
+# Components we will consider 
+m1$eig
+#Results for quantitatives variables 
+m1$quanti
+#Results for qualitatives  variables 
+m1$levels # for the modalities 
+m1$quali  # for the variables 
+#Results for individuals 
+m1$ind
+```
+
+Axe 1
+
+-   Sens positives : Ce sont les clients âgés, avec un solde bancaire élevé, souvent cadres ou retraités, mariés, sans prêt personnel (loan=no) et sans prêt immobilier (housing=no). Leur niveau d’études est souvent tertiaire.
+
+-   Sens négatives : Ce sont les clients plus jeunes, avec un solde bancaire faible, souvent étudiants ou dans des emplois de services, célibataires, et qui ont tendance à avoir un prêt personnel (loan=yes).
+
+Le métier (job) est la variable la plus importante sur cet axe, suivi par l’âge et le solde.
+
+Axe 2
+
+-   Sens positives : Ce sont les clients divorcés ou parfois marié, qui ont souvent un prêt personnel (loan=yes) et/ou un prêt immobilier (housing=yes).
+
+-   Sens négatives : Ce sont les clients célibataire, sans prêts personnels (loan=no), et souvent avec un solde bancaire faible. On y trouve aussi les étudiants, qui sont jeunes et ont un solde faible.
+
+    La situation matrimoniale (marital) et la possession d’un prêt personnel (loan) sont les variables les plus importantes sur cet axe.
+
+```{r}
+
+# Ajouter les labels aux résultats
+rownames(m1$ind$coord) <- ind_labels
+rownames(m1$ind$contrib) <- ind_labels
+rownames(m1$ind$cos2) <- ind_labels
+
+#' Visualisation the results
+#The correlation circle for the quantitatives variables 
+plot(m1, axes = c(1, 2), choice = "cor", label = TRUE)
+
+```
+
+```{r}
+
+#The graph for modalities of qualitatives variables 
+plot(m1, axes = c(1, 2), choice = "levels", label = TRUE)
+
+```
+
+```{r}
+
+#The graph of squared loadings for mixtes variables 
+plot(m1, axes = c(1, 2), choice = "sqload", label = TRUE)
+
+```
+
+```{r}
+
+#The graph of individuals 
+plot(m1, axes = c(1, 2), choice = "ind", label = TRUE)
+```
+
+En résumé, le profil client « idéal » (stable et solvable) se caractérise par : marié, cadre ou retraité, âge mûr, solde élevé, sans prêt personnel. À l’inverse, le profil à risque ou en phase de constitution se traduit par : jeune, célibataire ou divorcé, étudiant ou en services, faible solde, souvent endetté.
+
+#### AFMD sous Python
